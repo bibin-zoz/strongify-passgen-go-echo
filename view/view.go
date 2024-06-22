@@ -1,4 +1,4 @@
-// views/password_view.go
+// views/hash_view.go
 package views
 
 import (
@@ -7,14 +7,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// PasswordResponse is the structure for the password response
-type PasswordResponse struct {
-	Password string `json:"password"`
+// HashResponse is the structure for the hash response
+type HashResponse struct {
+	Hash string `json:"hash"`
 }
 
-// RenderPassword renders the password response
-func RenderPassword(c echo.Context, password string) error {
-	response := PasswordResponse{Password: password}
+// RenderHash renders the hash response
+func RenderHash(c echo.Context, hash string) error {
+	response := HashResponse{Hash: hash}
 	return c.JSON(http.StatusOK, response)
 }
 

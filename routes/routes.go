@@ -9,5 +9,5 @@ import (
 
 // InitRoutes initializes the routes for the application
 func InitRoutes(e *echo.Echo) {
-	e.POST("/generate-password", controllers.GeneratePassword)
+	e.POST("/generate-hash", controllers.GenerateHash)
 }
