@@ -2,6 +2,7 @@
 package main
 
 import (
+	"strongify-passgen-go-echo/database"
 	"strongify-passgen-go-echo/routes"
 
 	"github.com/labstack/echo/v4"
@@ -17,7 +18,9 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Initialize routes
+
 	routes.InitRoutes(e)
+	database.InitDB()
 
 	// Start server
 	e.Logger.Fatal(e.Start(":8080"))

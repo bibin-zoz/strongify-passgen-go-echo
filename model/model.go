@@ -1,11 +1,11 @@
-// models/password_options.go
+// models/hash_request.go
 package models
 
-// PasswordOptions holds the options for generating a password
-type PasswordOptions struct {
-	Length           int  `json:"length"`
-	IncludeNumbers   bool `json:"include_numbers"`
-	IncludeSpecials  bool `json:"include_specials"`
-	IncludeUppercase bool `json:"include_uppercase"`
-	IncludeLowercase bool `json:"include_lowercase"`
+// HashRequest holds the input for generating a hash
+type HashRequest struct {
+	Text       string `json:"text"`
+	Secret     string `json:"secret"`
+	Length     int    `json:"length"`
+	NumSymbols int    `json:"num_symbols"`
+	NumNumbers int    `json:"num_numbers"`
 }
