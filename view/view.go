@@ -22,3 +22,8 @@ func RenderHash(c echo.Context, hash string) error {
 func RenderError(c echo.Context, err string) error {
 	return c.JSON(http.StatusBadRequest, map[string]string{"error": err})
 }
+
+// RenderSuccess renders a success response
+func RenderSuccess(c echo.Context, message string) error {
+	return c.JSON(http.StatusOK, map[string]string{"message": message})
+}
