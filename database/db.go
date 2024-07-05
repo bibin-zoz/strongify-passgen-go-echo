@@ -36,4 +36,7 @@ func InitDB() {
 	if err := DB.AutoMigrate(&domain.User{}); err != nil {
 		panic(err)
 	}
+	if err := DB.AutoMigrate(&domain.WordPhrase{}); err != nil {
+		panic(err)
+	}
 }

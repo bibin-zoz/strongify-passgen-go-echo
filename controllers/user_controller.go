@@ -10,7 +10,6 @@ import (
 	models "strongify-passgen-go-echo/model"
 	views "strongify-passgen-go-echo/view"
 
-	"github.com/gin-gonic/gin"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -18,28 +17,23 @@ import (
 func Signup(c echo.Context) error {
 	signupData := new(domain.User)
 
-	// Bind the request body to signupData
 	if err := c.Bind(signupData); err != nil {
 		return views.RenderError(c, "Invalid request")
 	}
 
-	// Validate user data
 	if err := helpers.ValidateUser(*signupData); err != nil {
 		return views.RenderError(c, "Invalid request")
 	}
 
-	// Check if email is provided
 	if signupData.Email == "" {
 		return views.RenderError(c, "Invalid email")
 	}
 
-	// Check if email format is valid
 	emailPattern := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
 	if !regexp.MustCompile(emailPattern).MatchString(signupData.Email) {
 		return views.RenderError(c, "Invalid email format")
 	}
 
-	// Check if email already exists
 	var emailCount int64
 	if err := db.DB.Table("users").Where("email = ?", signupData.Email).Count(&emailCount).Error; err != nil {
 		return views.RenderError(c, "Database error")
@@ -48,7 +42,6 @@ func Signup(c echo.Context) error {
 		return views.RenderError(c, "Email already exists")
 	}
 
-	// Validate password
 	if signupData.Password == "" {
 		return views.RenderError(c, "Password should not be empty")
 	}
@@ -56,69 +49,63 @@ func Signup(c echo.Context) error {
 		return views.RenderError(c, "Password length should be at least 6 characters")
 	}
 
-	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(signupData.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return views.RenderError(c, "Failed to hash password")
 	}
 	signupData.Password = string(hashedPassword)
 
-	// Create the user
 	if err := db.DB.Create(&signupData).Error; err != nil {
 		return views.RenderError(c, "Failed to create user")
 	}
 
-	// Return success response
 	return views.RenderSuccess(c, "Signup successful")
 }
-func LoginPost(c *gin.Context) {
-	newMail := c.PostForm("email")
-	newPassword := c.PostForm("password")
+
+func LoginPost(c echo.Context) error {
+	newMail := c.FormValue("email")
+	newPassword := c.FormValue("password")
 
 	var compare domain.User
 
-	// Validate email and password presence
 	if newMail == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Email should not be empty"})
-		return
+		return views.RenderError(c, "Email should not be empty")
 	}
 	if newPassword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Password should not be empty"})
-		return
+		return views.RenderError(c, "Password should not be empty")
 	}
 
 	// Query user from database
-	if err := db.DB.Raw("SELECT ID, password, username, email FROM users WHERE email=?", newMail).Scan(&compare).Error; err != nil {
+	if err := db.DB.Raw("SELECT id, password, user_name, email FROM users WHERE email=?", newMail).Scan(&compare).Error; err != nil {
 		fmt.Println("Error querying the database:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "An error occurred while querying the database"})
-		return
+		return views.RenderError(c, "An error occurred while querying the database")
 	}
 
-	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(compare.Password), []byte(newPassword)); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect password"})
-		return
+		return views.RenderError(c, "Incorrect password")
 	}
 
-	// Generate access token
-	claims := models.Claims{
-		ID:       compare.ID,
-		Username: compare.UserName,
-		Email:    compare.Email,
+	claims := models.UserDetails{
+		ID:        compare.ID,
+		Firstname: compare.UserName,
+		Email:     compare.Email,
 	}
 
 	accessToken, err := helpers.GenerateAccessToken(claims)
 	if err != nil {
 		fmt.Println("Error generating access token:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating access token"})
-		return
+		return views.RenderError(c, "Error generating access token")
+	}
+	refreshToken, err := helpers.GenerateRefreshToken(claims)
+	if err != nil {
+		fmt.Println("Error generating refresh token:", err)
+		return views.RenderError(c, "Error generating refresh token")
 	}
 
-	// Create JSON response with token
-	response := gin.H{
-		"access_token": accessToken,
+	response := map[string]string{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
 	}
 
-	// Return JSON response with token
-	c.JSON(http.StatusOK, response)
+	return c.JSON(http.StatusOK, response)
 }

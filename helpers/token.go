@@ -1,114 +1,104 @@
 package helpers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"os"
-	"strings"
 	models "strongify-passgen-go-echo/model"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func CreateToken(user models.Claims, expireTime time.Time) (string, error) {
-	expirationTime := expireTime // Adjust as needed
-	claims := &models.Claims{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
+type AuthUserClaims struct {
+	Id    int    `json:"id"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+	jwt.StandardClaims
+}
+
+func PasswordHash(password string) (string, error) {
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		return "", errors.New("internal server error")
+	}
+	hash := string(hashPassword)
+	return hash, nil
+}
+
+func GenerateTokenUsers(userID int, userEmail string, expirationTime time.Time) (string, error) {
+	claims := &AuthUserClaims{
+		Id:    userID,
+		Email: userEmail,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
+			IssuedAt:  time.Now().Unix(),
 		},
 	}
-	// fmt.Println("us", user.Username)
-	// fmt.Printf("Claims: %+v\n", claims)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	jwtKey := []byte(os.Getenv("jwtKey"))
-	fmt.Println("JWT Key:", jwtKey)
-	signedToken, err := token.SignedString(jwtKey)
-	if err != nil {
-		fmt.Println("Error signing token:", err)
-		// c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return "", err
-	}
-	return signedToken, nil
-
-	// c.SetCookie("token", signedToken, int(expirationTime.Unix()), "/", "exclusivestore.xyz", false, true)
-
-	// c.Status(http.StatusOK)
-
-}
-
-func GenerateAccessToken(user models.Claims) (string, error) {
-
-	expirationTime := time.Now().Add(15 * time.Minute)
-	tokenString, err := CreateToken(user, expirationTime)
+	tokenString, err := token.SignedString([]byte("123456789"))
 	if err != nil {
 		return "", err
 	}
 	return tokenString, nil
 }
 
-func GenerateRefreshToken(user models.Claims) (string, error) {
+func GenerateAccessToken(user models.UserDetails) (string, error) {
+	expirationTime := time.Now().Add(10 * time.Hour)
+	tokenString, err := GenerateTokenUsers(int(user.ID), user.Email, expirationTime)
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
+}
 
+func GenerateRefreshToken(user models.UserDetails) (string, error) {
 	expirationTime := time.Now().Add(24 * 90 * time.Hour)
-	tokenString, err := CreateToken(user, expirationTime)
+	tokenString, err := GenerateTokenUsers(int(user.ID), user.Email, expirationTime)
 	if err != nil {
 		return "", err
 	}
 	return tokenString, nil
 }
+func CompareHashAndPassword(a string, b string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(a), []byte(b))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func PasswordHashing(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		return "", errors.New("internal server error")
+	}
+	hash := string(hashedPassword)
+	return hash, nil
+}
+func GetTokenFromHeader(header string) string {
+	if len(header) > 7 && header[:7] == "Bearer " {
+		return header[7:]
+	}
 
-func ParseToken(tokenString string) (*models.Claims, error) {
-
-	token, err := jwt.ParseWithClaims(tokenString, &models.Claims{}, func(token *jwt.Token) (interface{}, error) {
-
+	return header
+}
+func ExtractUserIDFromToken(tokenString string) (int, string, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &AuthUserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("invalid signing method")
 		}
-		return []byte(os.Getenv("jwtKey")), nil
+		return []byte("123456789"), nil
 	})
+
 	if err != nil {
-		fmt.Println("Access token expired", err)
+		return 0, "", err
 	}
-	claims, ok := token.Claims.(*models.Claims)
+
+	claims, ok := token.Claims.(*AuthUserClaims)
 	if !ok {
-		return nil, errors.New("failed to extract claims from token")
+		return 0, "", fmt.Errorf("invalid token claims")
 	}
 
-	return claims, nil
-}
-
-func CreateJson(token *models.TokenUser) (userDetailsJSON []byte) {
-	userDetailsJSON, err := json.Marshal(token)
-	if err != nil {
-		fmt.Println("Error converting UserDetails to JSON:", err)
-
-		return
-	}
-	return userDetailsJSON
-
-}
-func GetID(c *gin.Context) (uint, error) {
-	usercookie, _ := c.Cookie("auth")
-	var token models.TokenUser
-	err := json.NewDecoder(strings.NewReader(usercookie)).Decode(&token)
-	if err != nil {
-		fmt.Println("Error fetching UserDetails:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user details"})
-		return 0, err
-	}
-
-	Claims, err := ParseToken(token.AccessToken)
-	if err != nil {
-		fmt.Println("Error fetching UserDetails:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse user details from token"})
-		return 0, err
-	}
-	return Claims.ID, nil
+	return claims.Id, claims.Email, nil
 
 }

@@ -1,64 +1,81 @@
-// controllers/hash_controller.go
+
 package controllers
 
 import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"math/rand"
+	"fmt"
+	"os"
+	db "strongify-passgen-go-echo/database"
+	"strongify-passgen-go-echo/domain"
 	models "strongify-passgen-go-echo/model"
 	views "strongify-passgen-go-echo/view"
-	"time"
 
 	"github.com/labstack/echo/v4"
 )
 
-// GenerateHash generates a hash based on the given text, secret, length, number of symbols, and numbers
 func GenerateHash(c echo.Context) error {
+
 	request := new(models.HashRequest)
+
 	if err := c.Bind(request); err != nil {
 		return views.RenderError(c, "Invalid request")
 	}
+	var phrase domain.WordPhrase
+	result := db.DB.Where("ID=?", request.PhraseId).Find(&phrase)
+	if result.Error != nil {
+		return views.RenderError(c, "faield to get the details")
+	}
+	fmt.Println(request)
+	if request.Length < 6 {
+		return views.RenderError(c, "Password length must be at least 6 characters")
+	}
+	if request.NumNumbers+request.NumSymbols >= request.Length-3 {
 
-	hash := generateHash(request.Text, request.Secret, request.Length, request.NumSymbols, request.NumNumbers)
+		return views.RenderError(c, "Reduce number of symbols,number or Increase password length")
+	}
+	secret := os.Getenv("secret")
+	hash := generateHash(phrase.Phrase+request.Text, secret, request.Length, request.NumSymbols, request.NumNumbers)
 	return views.RenderHash(c, hash)
 }
 
-// Helper function to generate the hash
 func generateHash(text, secret string, length, numSymbols, numNumbers int) string {
 	h := hmac.New(sha256.New, []byte(secret))
 	h.Write([]byte(text))
 	baseHash := hex.EncodeToString(h.Sum(nil))
 
-	// Create the character pool
 	letters := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	numbers := "0123456789"
 	symbols := "!@#$%^&*()-_=+[]{}|;:,.<>?/"
 
-	// Shuffle and select characters
-	rand.Seed(time.Now().UnixNano())
-	pool := letters + numbers + symbols
 	result := make([]byte, length)
-
-	// Ensure the baseHash is used
 	copy(result, baseHash[:length])
 
-	// Add symbols
-	for i := 0; i < numSymbols; i++ {
-		index := rand.Intn(length)
-		result[index] = symbols[rand.Intn(len(symbols))]
+	addCharacters := func(pool string, count int, offset int) {
+		for i := 0; i < count; i++ {
+			index := (offset + i) % length
+			result[index] = pool[(baseHash[index]+byte(i))%byte(len(pool))]
+		}
 	}
 
-	// Add numbers
-	for i := 0; i < numNumbers; i++ {
-		index := rand.Intn(length)
-		result[index] = numbers[rand.Intn(len(numbers))]
+	addCharacters(letters[26:], 1, 0) 
+	addCharacters(numbers, 1, 1)      
+	addCharacters(symbols, 1, 2)      
+
+	if numSymbols > 0 {
+		numSymbols -= 1
+	}
+	if numNumbers > 0 {
+		numNumbers -= 1
 	}
 
-	// Fill the rest with random characters from the pool
+	addCharacters(symbols, numSymbols, 3)
+	addCharacters(numbers, numNumbers, 4)
+
 	for i := 0; i < length; i++ {
 		if result[i] == 0 {
-			result[i] = pool[rand.Intn(len(pool))]
+			result[i] = letters[baseHash[i]%byte(len(letters))]
 		}
 	}
 

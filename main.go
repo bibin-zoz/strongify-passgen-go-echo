@@ -2,6 +2,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"strongify-passgen-go-echo/database"
 	"strongify-passgen-go-echo/routes"
 
@@ -10,18 +12,17 @@ import (
 )
 
 func main() {
-	// Initialize Echo instance
 	e := echo.New()
 
-	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// Initialize routes
+
 
 	routes.InitRoutes(e)
 	database.InitDB()
+	secret := os.Getenv("secret")
+	fmt.Println(secret)
 
-	// Start server
 	e.Logger.Fatal(e.Start(":8080"))
 }

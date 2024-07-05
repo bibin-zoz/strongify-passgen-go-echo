@@ -6,12 +6,13 @@ import (
 
 type User struct {
 	gorm.Model
-	UserName string
-	Email    string
-	Password string
+	UserName string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
-type Phrase struct {
-	ID       int
-	Category string
-	Phrase   []string
+type WordPhrase struct {
+	ID         int
+	UserID     int
+	PhraseType string
+	Phrase     string
 }
