@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	db "strongify-passgen-go-echo/database"
@@ -33,7 +34,8 @@ func GetPhrases(c echo.Context) error {
 func AddPhrase(c echo.Context) error {
 	var phrase models.WordPhrase
 	if err := c.Bind(&phrase); err != nil {
-		return views.RenderError(c, "invalid input")
+		log.Println("failed to bind data",err)
+		return views.RenderError(c, err.Error())
 	}
 
 	if len(phrase.Words) < 5 {

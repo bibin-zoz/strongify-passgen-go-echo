@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
-	"regexp"
 	db "strongify-passgen-go-echo/database"
 	"strongify-passgen-go-echo/domain"
 	"strongify-passgen-go-echo/helpers"
@@ -17,21 +17,13 @@ import (
 func Signup(c echo.Context) error {
 	signupData := new(domain.User)
 
-	if err := c.Bind(signupData); err != nil {
-		return views.RenderError(c, "Invalid request")
+	if err := c.Bind(&signupData); err != nil {
+		log.Println("failed to bind data", err)
+		return views.RenderError(c, err.Error())
 	}
 
 	if err := helpers.ValidateUser(*signupData); err != nil {
-		return views.RenderError(c, "Invalid request")
-	}
-
-	if signupData.Email == "" {
-		return views.RenderError(c, "Invalid email")
-	}
-
-	emailPattern := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
-	if !regexp.MustCompile(emailPattern).MatchString(signupData.Email) {
-		return views.RenderError(c, "Invalid email format")
+		return views.RenderError(c, err.Error())
 	}
 
 	var emailCount int64
