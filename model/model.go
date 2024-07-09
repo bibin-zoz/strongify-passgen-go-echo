@@ -8,8 +8,8 @@ type HashRequest struct {
 	Text       string `json:"text"`
 	PhraseId   int    `json:"phrase_id"`
 	Length     int    `json:"length"`
-	NumSymbols int    `json:"num_symbols"`
-	NumNumbers int    `json:"num_numbers"`
+	NumSymbols int    `json:"min_num_symbols"`
+	NumNumbers int    `json:"min_num_numbers"`
 }
 type WordPhrase struct {
 	PhraseType string   `json:"phrase_type"`
