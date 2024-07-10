@@ -1,8 +1,3 @@
-# strongify-passgen-go-echo
-Here's a README file template for your Strongify Password Generator project. This template includes sections commonly found in README files, such as a project description, setup instructions, usage, and more. You can customize it further based on your specific project details.
-
----
-
 # Strongify Password Generator
 
 Strongify Password Generator is a secure password generation service that allows users to save custom phrases (collections of words) and generate passwords based on these phrases. The passwords can include user-defined lengths, minimum numbers of numbers, symbols, and a secret from an environment variable. This project is developed using Go, Echo, MySQL, and JWT for authentication.
@@ -40,7 +35,7 @@ Strongify Password Generator is a secure password generation service that allows
 1. **Clone the repository:**
 
    ```sh
-   git clone https://github.com/your-username/strongify-password-gen.git
+   git clone https://github.com/bibin-zoz/strongify-passgen-go-echo.git
    cd strongify-password-gen
    ```
 
